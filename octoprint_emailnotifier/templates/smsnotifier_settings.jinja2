@@ -1,0 +1,63 @@
+<h3>{{ _('Email Notifier Configuration') }}</h3>
+
+<form class="form-horizontal">
+
+	<div class="control-group">
+		<div class="controls" title="{{ _('You can toggle whether SMS notifications are enabled while a print is in progress.') }}">
+			<label class="checkbox">
+				<input type="checkbox" data-bind="checked: settings.plugins.smsnotifier.enabled" /> {{ _('Enabled') }}
+			</label>
+		</div>
+	</div>
+
+	<div class="control-group" title="{{ _('Printer name so you can tell which printer finished.') }}">
+		<label class="control-label">{{ _('Unique (to you) Printer name') }}</label>
+		<div class="controls">
+			<input type="text" class="input-block-level" data-bind="value: settings.plugins.smsnotifier.printer_name">
+		</div>
+	</div>
+
+	<div class="control-group" title="{{ _('Print complete notifications will be sent as SMS to this/these phone numbers.') }}">
+		<label class="control-label">{{ _('Recipient Phone number (comma separated)') }}</label>
+		<div class="controls">
+			<input type="text" class="input-block-level" data-bind="value: settings.plugins.smsnotifier.recipient_number">
+		</div>
+	</div>
+	
+	<h4>{{ _('Twilio Settings') }}</h4>
+	
+	<p>{{ _('You can use a free trial twilio account; request your first number and verify you cell phone number and you can send free messages to that number.') }}</p>
+	
+	<div class="control-group" title="{{ _('Account SID.') }}">
+		<label class="control-label">{{ _('Account SID') }}</label>
+		<div class="controls">
+			<input type="text" class="input-block-level" data-bind="value: settings.plugins.emailnotifier.account_sid">
+		</div>	
+	</div>
+	
+	<div class="control-group" title="{{ _('Auth Token.') }}">
+		<label class="control-label">{{ _('Auth Token') }}</label>
+		<div class="controls">
+			<input type="text" class="input-block-level" data-bind="value: settings.plugins.emailnotifier.auth_token">
+		</div>	
+	</div>
+	
+	<div class="control-group" title="{{ _('Twilio Number.') }}">
+		<label class="control-label">{{ _('Twilio Number') }}</label>
+		<div class="controls">
+			<input type="text" class="input-block-level" data-bind="value: settings.plugins.emailnotifier.from_number">
+		</div>	
+	</div>
+	
+	<h4>{{ _('Message Content') }}</h4>
+	
+	<p>{{ _('The email title and body templates may contain the tags <code>{filename}</code>, <code>{elapsed_time}</code>, and <code>{printer_name}</code>.') }}</p>
+	
+	<div class="control-group" title="{{ _('Content of notification message') }}">
+		<label class="control-label">{{ _('Message') }}</label>
+		<div class="controls">
+			<input type="text" class="input-block-level" data-bind="value: settings.plugins.emailnotifier.message_format.body">
+		</div>
+	</div>
+	
+</form>
