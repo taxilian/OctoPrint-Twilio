@@ -62,9 +62,9 @@ class SMSNotifierPlugin(octoprint.plugin.EventHandlerPlugin,
         try:
             client = TwilioRestClient(self._settings.get(['account_sid']), self._settings.get(['auth_token']))
 
-            fromnumber = phonenumbers.format(phonenumbers.parse(self._settings.get(['from_number']), 'US'), phonenumbers.PhoneNumberFormat.E164)
+            fromnumber = phonenumbers.format_number(phonenumbers.parse(self._settings.get(['from_number']), 'US'), phonenumbers.PhoneNumberFormat.E164)
             for number in self._settings.get(['recipient_number']).split(','):
-                tonumber = phonenumbers.format(phonenumbers.parse(number, 'US'), phonenumbers.PhoneNumberFormat.E164)
+                tonumber = phonenumbers.format_number(phonenumbers.parse(number, 'US'), phonenumbers.PhoneNumberFormat.E164)
                 client.messages.create(to=tonumber,from_=fromnumber,body=message)
         except Exception as e:
             # report problem sending sms
