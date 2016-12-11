@@ -31,21 +31,21 @@
 	<div class="control-group" title="{{ _('Account SID.') }}">
 		<label class="control-label">{{ _('Account SID') }}</label>
 		<div class="controls">
-			<input type="text" class="input-block-level" data-bind="value: settings.plugins.emailnotifier.account_sid">
+			<input type="text" class="input-block-level" data-bind="value: settings.plugins.smsnotifier.account_sid">
 		</div>	
 	</div>
 	
 	<div class="control-group" title="{{ _('Auth Token.') }}">
 		<label class="control-label">{{ _('Auth Token') }}</label>
 		<div class="controls">
-			<input type="text" class="input-block-level" data-bind="value: settings.plugins.emailnotifier.auth_token">
+			<input type="text" class="input-block-level" data-bind="value: settings.plugins.smsnotifier.auth_token">
 		</div>	
 	</div>
 	
 	<div class="control-group" title="{{ _('Twilio Number.') }}">
 		<label class="control-label">{{ _('Twilio Number') }}</label>
 		<div class="controls">
-			<input type="text" class="input-block-level" data-bind="value: settings.plugins.emailnotifier.from_number">
+			<input type="text" class="input-block-level" data-bind="value: settings.plugins.smsnotifier.from_number">
 		</div>	
 	</div>
 	
@@ -56,7 +56,7 @@
 	<div class="control-group" title="{{ _('Content of notification message') }}">
 		<label class="control-label">{{ _('Message') }}</label>
 		<div class="controls">
-			<input type="text" class="input-block-level" data-bind="value: settings.plugins.emailnotifier.message_format.body">
+			<input type="text" class="input-block-level" data-bind="value: settings.plugins.smsnotifier.message_format.body">
 		</div>
 	</div>
 	
