@@ -2,7 +2,7 @@
 from __future__ import absolute_import
 import os
 import octoprint.plugin
-from twilio.rest import TwilioRestClient
+from twilio.rest import Client as TwilioRestClient
 import phonenumbers
 
 class SMSNotifierPlugin(octoprint.plugin.EventHandlerPlugin,

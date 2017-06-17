@@ -33,7 +33,7 @@ plugin_url = "https://github.com/anoved/OctoPrint-EmailNotifier"
 plugin_license = "AGPLv3"
 
 # Any additional requirements besides OctoPrint should be listed here
-plugin_requires = ['twilio','phonenumbers']
+plugin_requires = ['twilio>=6','phonenumbers']
 
 # Additional package data to install for this plugin. The subfolders "templates", "static" and "translations" will
 # already be installed automatically if they exist.
