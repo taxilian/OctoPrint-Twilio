@@ -49,6 +49,7 @@ class SMSNotifierPlugin(octoprint.plugin.EventHandlerPlugin,
         if self._settings.get(['send_image']):
             snapshot_url = self._settings.global_get(["webcam", "snapshot"])
             if snapshot_url:
+                self._logger.info("Taking Snapshot.... Say Cheese!")
                 try:
                     import urllib
                     snapshot_path, headers = urllib.urlretrieve(snapshot_url)
@@ -60,9 +61,10 @@ class SMSNotifierPlugin(octoprint.plugin.EventHandlerPlugin,
                     os.rename(snapshot_path, snapshot_path + ".jpg")
                     snapshot_path += ".jpg"
                     # flip or rotate as needed
+                    self._logger.info("Processing %s before uploading." % snapshot_path)
                     self._process_snapshot(snapshot_path)
 
-                    image = {"upload": snapshot_path}
+                    image = {"upload": open(snapshot_path, "rb")}
                     try:
                         import requests
                         response = requests.post('http://uploads.im/api?', files=image)
@@ -70,9 +72,11 @@ class SMSNotifierPlugin(octoprint.plugin.EventHandlerPlugin,
                         self._logger.exception("Error Uploading image to uploads.im: {message}".format(
                         message=str(e)))
                     else:
-                        if self._send_txt(payload, response.json()['data'['img_url']]):
-                            return True
-                    self._logger.warn("Could not send a webcam image, sending only a note")
+                        if response.status_code == requests.codes.ok:
+                            self._logger.info("Snapshot uploaded to to %s" % (response.json()['data']['img_url']))
+                            if self._send_txt(payload, response.json()['data']['img_url']):
+                                return True
+                    self._logger.warn("Could not send a webcam image, sending only text notification.")
                     self._send_txt(payload)
             self._logger.warn("Could not get a image from the webcam. Is it enabled?")
             return False
@@ -102,10 +106,11 @@ class SMSNotifierPlugin(octoprint.plugin.EventHandlerPlugin,
         client = TwilioRestClient(self._settings.get(['account_sid']), self._settings.get(['auth_token']))
         if snapshot:
             try:
-                client.messages.create(to=tonumber,from_=fromnumber,body=message)
+                client.messages.create(to=tonumber,from_=fromnumber,body=message,media_url=snapshot)
             except Exception as e:
                 # report problem sending sms
                 self._logger.exception("SMS notification error: %s" % (str(e)))
+                return False
             else:
                 # report notification was sent
                 self._logger.info("Print notification sent to %s" % (self._settings.get(['recipient_number'])))
