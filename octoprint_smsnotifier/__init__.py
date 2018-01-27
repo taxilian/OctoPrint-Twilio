@@ -77,13 +77,17 @@ class SMSNotifierPlugin(octoprint.plugin.EventHandlerPlugin,
                             self._logger.info("Snapshot uploaded to to %s" % (response.json()['data']['img_url']))
                             if self._send_txt(payload, response.json()['data']['img_url']):
                                 return True
-                    self._logger.warn("Could not send a webcam image, sending only text notification.")
-                    self._send_txt(payload)
-            self._logger.warn("Could not get a image from the webcam. Is it enabled?")
-            return False
+                            else:
+                                self._logger.warn("Could not send a webcam image, sending only text notification.")
+                                return self._send_txt(payload)
+                        else:
+                            self._logger.error("Uploads.im returned {} and {}".format(response.status_code, response.status_txt))
+                            return self._send_txt(payload)
+            self._logger.warn("Could not find settings for snapshot URL. Is it enabled?")
+            return self._send_txt(payload)
 
         else:
-            self._send_txt(payload)
+            return self._send_txt(payload)
 
     def _send_txt(self, payload, snapshot=False):
 
