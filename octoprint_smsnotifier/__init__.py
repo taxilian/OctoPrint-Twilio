@@ -2,14 +2,16 @@
 from __future__ import absolute_import
 import os
 import octoprint.plugin
-from twilio.rest import Client as TwilioRestClient
 import phonenumbers
+from sarge import (shell_quote, run)
+from twilio.rest import Client as TwilioRestClient
+
 
 class SMSNotifierPlugin(octoprint.plugin.EventHandlerPlugin,
-                          octoprint.plugin.SettingsPlugin,
-                          octoprint.plugin.TemplatePlugin):
+                        octoprint.plugin.SettingsPlugin,
+                        octoprint.plugin.TemplatePlugin):
 
-    #~~ SettingsPlugin
+    # SettingsPlugin
 
     def get_settings_defaults(self):
         # matching password must be registered in system keyring
@@ -30,14 +32,14 @@ class SMSNotifierPlugin(octoprint.plugin.EventHandlerPlugin,
     def get_settings_version(self):
         return 1
 
-    #~~ TemplatePlugin
+    # TemplatePlugin
 
     def get_template_configs(self):
         return [
             dict(type="settings", name="SMS Notifier", custom_bindings=False)
         ]
 
-    #~~ EventPlugin
+    # EventPlugin
 
     def on_event(self, event, payload):
         if event != "PrintDone":
@@ -64,27 +66,30 @@ class SMSNotifierPlugin(octoprint.plugin.EventHandlerPlugin,
                     self._logger.info("Processing %s before uploading." % snapshot_path)
                     self._process_snapshot(snapshot_path)
 
-                    image = {"upload": open(snapshot_path, "rb")}
                     try:
-                        import requests
-                        response = requests.post('http://uploads.im/api?', files=image)
+                        from cloudinary import uploader
+                        response = uploader.unsigned_upload(snapshot_path, "snapshot", cloud_name="octoprint-twilio")
                     except Exception as e:
-                        self._logger.exception("Error Uploading image to uploads.im: {message}".format(
-                        message=str(e)))
+                        self._logger.exception("Error Uploading image to the cloud: {message}".format(message=str(e)))
+                        return self._sent_text(payload)
                     else:
-                        if response.status_code == requests.codes.ok:
-                            self._logger.info("Snapshot uploaded to to %s" % (response.json()['data']['img_url']))
-                            if self._send_txt(payload, response.json()['data']['img_url']):
+                        if "url" in response:
+                            self._logger.info("Snapshot uploaded to {}".format(response["url"]))
+                            if self._send_txt(payload, response['url']):
                                 return True
-                    self._logger.warn("Could not send a webcam image, sending only text notification.")
-                    self._send_txt(payload)
-            self._logger.warn("Could not get a image from the webcam. Is it enabled?")
-            return False
+                            else:
+                                self._logger.warn("Could not send a webcam image, sending only text notification.")
+                                return self._send_txt(payload)
+                        else:
+                            self._logger.error("Cloud returned {}".format(response["error"]["message"]))
+                            return self._send_txt(payload)
+            self._logger.warn("Could not find settings for snapshot URL. Is it enabled?")
+            return self._send_txt(payload)
 
         else:
-            self._send_txt(payload)
+            return self._send_txt(payload)
 
-    def _send_txt(self, payload, snapshot = False):
+    def _send_txt(self, payload, snapshot=False):
 
         filename = os.path.basename(payload["file"])
 
@@ -106,7 +111,7 @@ class SMSNotifierPlugin(octoprint.plugin.EventHandlerPlugin,
         client = TwilioRestClient(self._settings.get(['account_sid']), self._settings.get(['auth_token']))
         if snapshot:
             try:
-                client.messages.create(to=tonumber,from_=fromnumber,body=message,media_url=snapshot)
+                client.messages.create(to=tonumber, from_=fromnumber, body=message, media_url=snapshot)
             except Exception as e:
                 # report problem sending sms
                 self._logger.exception("SMS notification error: %s" % (str(e)))
@@ -117,7 +122,7 @@ class SMSNotifierPlugin(octoprint.plugin.EventHandlerPlugin,
                 return True
 
         try:
-            client.messages.create(to=tonumber,from_=fromnumber,body=message)
+            client.messages.create(to=tonumber, from_=fromnumber, body=message)
         except Exception as e:
             # report problem sending sms
             self._logger.exception("SMS notification error: %s" % (str(e)))
@@ -128,10 +133,9 @@ class SMSNotifierPlugin(octoprint.plugin.EventHandlerPlugin,
 
         return False
 
-
     def _process_snapshot(self, snapshot_path, pixfmt="yuv420p"):
-        hflip  = self._settings.global_get_boolean(["webcam", "flipH"])
-        vflip  = self._settings.global_get_boolean(["webcam", "flipV"])
+        hflip = self._settings.global_get_boolean(["webcam", "flipH"])
+        vflip = self._settings.global_get_boolean(["webcam", "flipV"])
         rotate = self._settings.global_get_boolean(["webcam", "rotate90"])
         ffmpeg = self._settings.global_get(["webcam", "ffmpeg"])
 
@@ -140,9 +144,9 @@ class SMSNotifierPlugin(octoprint.plugin.EventHandlerPlugin,
 
         ffmpeg_command = [ffmpeg, "-y", "-i", snapshot_path]
 
-        rotate_params = ["format={}".format(pixfmt)] # workaround for foosel/OctoPrint#1317
+        rotate_params = ["format={}".format(pixfmt)]  # workaround for foosel/OctoPrint#1317
         if rotate:
-            rotate_params.append("transpose=2") # 90 degrees counter clockwise
+            rotate_params.append("transpose=2")  # 90 degrees counter clockwise
         if hflip:
             rotate_params.append("hflip")       # horizontal flip
         if vflip:
@@ -159,7 +163,6 @@ class SMSNotifierPlugin(octoprint.plugin.EventHandlerPlugin,
                               "got return code {}: {}, {}".format(p.returncode,
                                                                   p.stdout.text,
                                                                   p.stderr.text))
-
 
     def get_update_information(self):
         return dict(
@@ -179,7 +182,9 @@ class SMSNotifierPlugin(octoprint.plugin.EventHandlerPlugin,
             )
         )
 
+
 __plugin_name__ = "SMS Notifier (with Twilio)"
+
 
 def __plugin_load__():
     global __plugin_implementation__
@@ -189,4 +194,3 @@ def __plugin_load__():
     __plugin_hooks__ = {
         "octoprint.plugin.softwareupdate.check_config": __plugin_implementation__.get_update_information
     }
-
