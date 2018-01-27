@@ -68,20 +68,21 @@ class SMSNotifierPlugin(octoprint.plugin.EventHandlerPlugin,
 
                     image = {"upload": open(snapshot_path, "rb")}
                     try:
-                        import requests
-                        response = requests.post('http://uploads.im/api?', files=image)
+                        from cloudinary import uploader
+                        response = uploader.unsigned_upload(snapshot_path, "snapshot", cloud_name="octoprint-twilio")
                     except Exception as e:
-                        self._logger.exception("Error Uploading image to uploads.im: {message}".format(message=str(e)))
+                        self._logger.exception("Error Uploading image to the cloud: {message}".format(message=str(e)))
+                        return self._sent_text(payload)
                     else:
-                        if response.status_code == requests.codes.ok:
-                            self._logger.info("Snapshot uploaded to to %s" % (response.json()['data']['img_url']))
-                            if self._send_txt(payload, response.json()['data']['img_url']):
+                        if "url" in response:
+                            self._logger.info("Snapshot uploaded to {}".format(response["url"]))
+                            if self._send_txt(payload, response['url']):
                                 return True
                             else:
                                 self._logger.warn("Could not send a webcam image, sending only text notification.")
                                 return self._send_txt(payload)
                         else:
-                            self._logger.error("Uploads.im returned {} and {}".format(response.status_code, response.status_txt))
+                            self._logger.error("Cloud returned {}".format(response["error"]["message"]))
                             return self._send_txt(payload)
             self._logger.warn("Could not find settings for snapshot URL. Is it enabled?")
             return self._send_txt(payload)
