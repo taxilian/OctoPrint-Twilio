@@ -66,7 +66,6 @@ class SMSNotifierPlugin(octoprint.plugin.EventHandlerPlugin,
                     self._logger.info("Processing %s before uploading." % snapshot_path)
                     self._process_snapshot(snapshot_path)
 
-                    image = {"upload": open(snapshot_path, "rb")}
                     try:
                         from cloudinary import uploader
                         response = uploader.unsigned_upload(snapshot_path, "snapshot", cloud_name="octoprint-twilio")
