@@ -1,0 +1,5 @@
+[flake8]
+max-line-length= 120
+
+ignore=
+ E127, E128 # bad indentation for continuation lines; would result in really deep indentation, which is the whole reason for doing continuation lines.
