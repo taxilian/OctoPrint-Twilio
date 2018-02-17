@@ -204,7 +204,7 @@ class SMSNotifierPlugin(octoprint.plugin.EventHandlerPlugin,
                     self._process_snapshot(snapshot_path)
 
         self._logger.info("calling generic uploader, uploader: {}, file: {}".format(uploader, snapshot_path))
-        snapshot_file = '{}_{}.jpg'.format(payload['name'], octoprint.util.get_formatted_datetime(datetime.now()))
+        snapshot_file = '{}_{}.jpg'.format(payload['name'], octoprint.util.get_formatted_datetime(datetime.datetime.now()))
         image_url = uploader.do_upload(snapshot_path, self.scrub_filename(snapshot_file))
         self._logger.info("done calling generic uploader, url: {}".format(image_url))
 
