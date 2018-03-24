@@ -2,7 +2,7 @@
 
 Recieve SMS notifications when OctoPrint jobs are complete.
 
-![Settings tab and email screenshot](extras/emailnotifier.png)
+![Settings tab and email screenshot](extras/smsnotifier.png)
 
 ## Installation
 
