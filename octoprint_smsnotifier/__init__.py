@@ -238,6 +238,11 @@ class SMSNotifierPlugin(octoprint.plugin.EventHandlerPlugin,
         return sent
 
     def _send_txt(self, payload, snapshot=False):
+        '''Wrapper to call send_text_single for every 'to' number.'''
+        for number in self._settings.get(['recipient_number']).split(','):
+            self._send_txt_single(payload, number, snapshot=snapshot)
+
+    def _send_txt_single(self, payload, number, snapshot):
 
         filename = os.path.basename(payload["file"])
 
@@ -245,9 +250,8 @@ class SMSNotifierPlugin(octoprint.plugin.EventHandlerPlugin,
 
         fromnumber = phonenumbers.format_number(phonenumbers.parse(
             self._settings.get(['from_number']), 'US'), phonenumbers.PhoneNumberFormat.E164)
+        tonumber = phonenumbers.format_number(phonenumbers.parse(number, 'US'), phonenumbers.PhoneNumberFormat.E164)
 
-        for number in self._settings.get(['recipient_number']).split(','):
-            tonumber = phonenumbers.format_number(phonenumbers.parse(number, 'US'), phonenumbers.PhoneNumberFormat.E164)
         tags = {
             'filename': filename,
             'elapsed_time': elapsed_time,
