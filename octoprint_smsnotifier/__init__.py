@@ -153,9 +153,9 @@ class SMSNotifierPlugin(octoprint.plugin.EventHandlerPlugin,
             printer_name="",
             #upload_provider="cloudinary",
             upload_provider="aws_s3",
-            s3_bucket="dyn.tedder.me",
-            s3_url="https://dyn.tedder.me",
-            s3_key_prefix="3d/automated/",
+            s3_bucket="",
+            s3_url="",
+            s3_key_prefix="",
             message_format=dict(
                 body="{printer_name} job complete: {filename} done printing after {elapsed_time}"
             )
