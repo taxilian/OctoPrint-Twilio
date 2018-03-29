@@ -239,8 +239,12 @@ class SMSNotifierPlugin(octoprint.plugin.EventHandlerPlugin,
 
     def _send_txt(self, payload, snapshot=False):
         '''Wrapper to call send_text_single for every 'to' number.'''
+
+        success = True
         for number in self._settings.get(['recipient_number']).split(','):
-            self._send_txt_single(payload, number, snapshot=snapshot)
+            if not self._send_txt_single(payload, number, snapshot=snapshot):
+                success = False
+        return success
 
     def _send_txt_single(self, payload, number, snapshot):
 
