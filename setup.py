@@ -27,13 +27,13 @@ plugin_author = "Richard Bateman"
 plugin_author_email = "taxilian@gmail.com"
 
 # The plugin's homepage URL. Can be overwritten within OctoPrint's internal data via __plugin_url__ in the plugin module
-plugin_url = "https://github.com/anoved/OctoPrint-EmailNotifier"
+plugin_url = "https://github.com/anoved/OctoPrint-Twilio"
 
 # The plugin's license. Can be overwritten within OctoPrint's internal data via __plugin_license__ in the plugin module
 plugin_license = "AGPLv3"
 
 # Any additional requirements besides OctoPrint should be listed here
-plugin_requires = ['twilio>=6','phonenumbers','cloudinary',"six>=1.9.0"]
+plugin_requires = ['twilio>=6','phonenumbers','cloudinary','six>=1.9.0','boto3']
 
 # Additional package data to install for this plugin. The subfolders "templates", "static" and "translations" will
 # already be installed automatically if they exist.

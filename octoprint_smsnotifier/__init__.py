@@ -1,10 +1,137 @@
 # coding=utf-8
+
 from __future__ import absolute_import
-import os
-import octoprint.plugin
-import phonenumbers
-from sarge import (shell_quote, run)
+import sarge
 from twilio.rest import Client as TwilioRestClient
+import logging
+import octoprint.plugin
+import os
+import phonenumbers
+import datetime
+import octoprint.util
+import re
+import uuid
+
+
+class UploaderBase(object):
+    def __init__(self, logger):
+        self.have_imports = False
+        self._logger = logger # logging.getLogger(__name__)
+
+    # taking a settings dict lets us create a factory method. Otherwise
+    # our init classes have to be different.
+    @staticmethod
+    def factory(provider=None, settings={}):
+        _logger = logging.getLogger(__name__)
+        _logger.warn("logger name:{}".format(__name__))
+        _logger.warn("starting factory with provider: {}".format(provider))
+
+        if provider == 'cloudinary':
+            _logger.warn("hello cloudinary")
+            return CloudinaryUploader(_logger, settings)
+        if provider == 'uploads.im':
+            _logger.warn("hello uploads.im")
+            return UploadsImUploader(_logger, settings)
+        if provider == 'aws_s3':
+            _logger.warn("hello s3")
+            return S3Uploader(_logger, settings)
+        _logger.warn("hello base")
+        return UploaderBase(_logger)  # basically a no-op.
+
+    def do_upload(self, file_path, suggested_filename=None):
+        pass
+
+
+class UploadsImUploader(UploaderBase):
+    def __init__(self, logger, _):
+        super(UploadsImUploader, self).__init__(logger)
+
+    def do_upload(self, file_path, suggested_filename=None):
+        file_dict = {"upload": open(file_path, "rb")}
+        try:
+            import requests
+            response = requests.post('http://uploads.im/api?', files=file_dict)
+        except Exception as e:
+            self._logger.exception(
+                "Error Uploading file to uploads.im: {message}".format(
+                    message=str(e)))
+        else:
+            if response.status_code == requests.codes.ok:
+                url = response.json().get('data', {}).get('img_url', None)
+                self._logger.info("Snapshot uploaded to {}".format(url))
+                return url
+        return None
+
+
+class CloudinaryUploader(UploaderBase):
+    def __init__(self, logger, _):
+        super(CloudinaryUploader, self).__init__(logger)
+
+    def do_upload(self, file_path, suggested_filename=None):
+        try:
+            from cloudinary import uploader
+            response = uploader.unsigned_upload(file_path, "snapshot", cloud_name="octoprint-twilio")
+        except Exception as e:
+            self._logger.exception("Error Uploading image to cloudinary: {message}".format(message=str(e)))
+            return None
+        else:
+            url = response.get('url', None)
+            self._logger.info("Snapshot uploaded, url: {}".format(url))
+            return url
+        return None
+
+
+class S3Uploader(UploaderBase):
+    def __init__(self, logger, settings):
+        super(S3Uploader, self).__init__(logger)
+        self.s3_bucket = settings.get(['s3_bucket'])
+        self.s3_key_prefix = settings.get(['s3_key_prefix'])
+        if not self.s3_key_prefix:
+            self.s3_key_prefix = ''
+        self.s3_url = settings.get(['s3_url'])
+        if not self.s3_url:
+            self.s3_url = 'http://{}.s3.amazonaws.com/{}'.format(self.s3_bucket)
+        self._logger.warn("fp: {}, s3b: {}, kp: {}".format("n/a", self.s3_bucket, self.s3_key_prefix))
+        self._logger.warn("s3up init done")
+
+        try:
+            import boto3
+            self.s3_client = boto3.client('s3')
+            self.have_imports = True
+        except Exception as e:
+            self._logger.exception(
+                "Couldn't import boto3 and start client: {message}".format(
+                    message=str(e)))
+
+    def do_upload(self, file_path, suggested_filename=None):
+        # we can use the suggested filename to make a sane key, but
+        # create a random key otherwise.
+        if not suggested_filename:
+            suggested_filename = '{}.jpg'.format(uuid.uuid4())
+
+        keypath = '{}{}'.format(self.s3_key_prefix, suggested_filename)
+        try:
+            self._logger.warn("fp: {}, s3b: {}, kp: {}".format(file_path, self.s3_bucket, keypath))
+            self.s3_client.upload_file(file_path, self.s3_bucket, keypath,
+                ExtraArgs={
+                    'ACL': 'public-read',
+                    'CacheControl': 'max-age=300',
+                    'ContentType': 'image/jpeg'
+                })
+
+            # this can cause a redirect, which Twilio doesn't like.
+            #url = self.s3_client.generate_presigned_url('get_object',
+            #    Params={'Bucket': self.s3_bucket, 'Key': keypath},
+            #    ExpiresIn=3600
+            #)
+            url = '{}/{}'.format(self.s3_url, keypath)
+            self._logger.info("using boto3 url: {}".format(url))
+            return url
+
+        except Exception as e:
+            self._logger.exception("Error Uploading file to aws s3: {message}".format(
+                message=str(e)))
+        return None
 
 
 class SMSNotifierPlugin(octoprint.plugin.EventHandlerPlugin,
@@ -16,6 +143,9 @@ class SMSNotifierPlugin(octoprint.plugin.EventHandlerPlugin,
     def get_settings_defaults(self):
         # matching password must be registered in system keyring
         # to support customizable mail server, may need port too
+        #
+        # Not all settings are in the UI;
+        # You can set them in octoprint's config.yaml.
         return dict(
             enabled=False,
             send_image=False,
@@ -24,6 +154,10 @@ class SMSNotifierPlugin(octoprint.plugin.EventHandlerPlugin,
             account_sid="",
             auth_token="",
             printer_name="",
+            upload_provider="cloudinary",
+            s3_bucket="",
+            s3_url="",
+            s3_key_prefix="",
             message_format=dict(
                 body="{printer_name} job complete: {filename} done printing after {elapsed_time}"
             )
@@ -47,7 +181,11 @@ class SMSNotifierPlugin(octoprint.plugin.EventHandlerPlugin,
 
         if not self._settings.get(['enabled']):
             return
+        uploader = UploaderBase.factory(
+            provider=self._settings.get(['upload_provider']),
+            settings=self._settings)
 
+        snapshot_path = None  # we'll fill it in later
         if self._settings.get(['send_image']):
             snapshot_url = self._settings.global_get(["webcam", "snapshot"])
             if snapshot_url:
@@ -56,8 +194,9 @@ class SMSNotifierPlugin(octoprint.plugin.EventHandlerPlugin,
                     import urllib
                     snapshot_path, headers = urllib.urlretrieve(snapshot_url)
                 except Exception as e:
-                    self._logger.exception("Exception while fetching snapshot from webcam, sending only a note: {message}".format(
-                        message=str(e)))
+                    self._logger.exception(
+                        "Exception while fetching snapshot from webcam, sending only a note: {message}".format(
+                            message=str(e)))
                 else:
                     # ffmpeg can't guess file type it seems
                     os.rename(snapshot_path, snapshot_path + ".jpg")
@@ -66,41 +205,59 @@ class SMSNotifierPlugin(octoprint.plugin.EventHandlerPlugin,
                     self._logger.info("Processing %s before uploading." % snapshot_path)
                     self._process_snapshot(snapshot_path)
 
-                    try:
-                        from cloudinary import uploader
-                        response = uploader.unsigned_upload(snapshot_path, "snapshot", cloud_name="octoprint-twilio")
-                    except Exception as e:
-                        self._logger.exception("Error Uploading image to the cloud: {message}".format(message=str(e)))
-                        return self._sent_text(payload)
-                    else:
-                        if "url" in response:
-                            self._logger.info("Snapshot uploaded to {}".format(response["url"]))
-                            if self._send_txt(payload, response['url']):
-                                return True
-                            else:
-                                self._logger.warn("Could not send a webcam image, sending only text notification.")
-                                return self._send_txt(payload)
-                        else:
-                            self._logger.error("Cloud returned {}".format(response["error"]["message"]))
-                            return self._send_txt(payload)
-            self._logger.warn("Could not find settings for snapshot URL. Is it enabled?")
-            return self._send_txt(payload)
+        self._logger.info("calling generic uploader, uploader: {}, file: {}".format(uploader, snapshot_path))
+        snapshot_file = '{}_{}.jpg'.format(payload['name'], octoprint.util.get_formatted_datetime(datetime.datetime.now()))
+        image_url = uploader.do_upload(snapshot_path, self.scrub_filename(snapshot_file))
+        self._logger.info("done calling generic uploader, url: {}".format(image_url))
 
-        else:
-            return self._send_txt(payload)
+        # we have the image, or not. either way, send the sms.
+        self._send_txt_with_image(payload, image_url)
+
+    def _send_txt_with_image(self, payload, img_path=None):
+        sent = False
+        try:
+            # try to safely send a message- in other words, fall back as needed. Nested 'if' cases
+            # are easier to read, hopefully. Note returning early on success.
+            if img_path:
+                sent = self._send_txt(payload, img_path)
+                if sent:
+                    self._logger.warn("successfully sent text+image notification")
+                    return True
+                else:
+                    self._logger.warn("could not send text+image notification, will try without image.")
+
+            self._logger.warn("sending text-only text notification.")
+            sent = self._send_txt(payload)
+            if sent:
+                self._logger.warn("successfully sent text-only notification")
+                return True
+            else:
+                self._logger.warn("could not sent text-only notification for unknown reasons.")
+                return False
+        except Exception as e:
+            self._logger.exception("notification error: %s" % (str(e)))
+        # fallthrough
+        return sent
 
     def _send_txt(self, payload, snapshot=False):
+        '''Wrapper to call send_text_single for every 'to' number.'''
+
+        success = True
+        for number in self._settings.get(['recipient_number']).split(','):
+            if not self._send_txt_single(payload, number, snapshot=snapshot):
+                success = False
+        return success
+
+    def _send_txt_single(self, payload, number, snapshot):
 
         filename = os.path.basename(payload["file"])
 
-        import datetime
-        import octoprint.util
         elapsed_time = octoprint.util.get_formatted_timedelta(datetime.timedelta(seconds=payload["time"]))
 
-        fromnumber = phonenumbers.format_number(phonenumbers.parse(self._settings.get(['from_number']), 'US'), phonenumbers.PhoneNumberFormat.E164)
+        fromnumber = phonenumbers.format_number(phonenumbers.parse(
+            self._settings.get(['from_number']), 'US'), phonenumbers.PhoneNumberFormat.E164)
+        tonumber = phonenumbers.format_number(phonenumbers.parse(number, 'US'), phonenumbers.PhoneNumberFormat.E164)
 
-        for number in self._settings.get(['recipient_number']).split(','):
-            tonumber = phonenumbers.format_number(phonenumbers.parse(number, 'US'), phonenumbers.PhoneNumberFormat.E164)
         tags = {
             'filename': filename,
             'elapsed_time': elapsed_time,
@@ -163,6 +320,10 @@ class SMSNotifierPlugin(octoprint.plugin.EventHandlerPlugin,
                               "got return code {}: {}, {}".format(p.returncode,
                                                                   p.stdout.text,
                                                                   p.stderr.text))
+
+    def scrub_filename(self, filename):
+        '''Restrict characters used in a filename'''
+        return re.sub(r"[^\w\-\.]", '_', filename)
 
     def get_update_information(self):
         return dict(
