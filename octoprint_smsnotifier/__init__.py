@@ -143,6 +143,9 @@ class SMSNotifierPlugin(octoprint.plugin.EventHandlerPlugin,
     def get_settings_defaults(self):
         # matching password must be registered in system keyring
         # to support customizable mail server, may need port too
+        #
+        # Not all settings are in the UI;
+        # You can set them in octoprint's config.yaml.
         return dict(
             enabled=False,
             send_image=False,
@@ -151,8 +154,7 @@ class SMSNotifierPlugin(octoprint.plugin.EventHandlerPlugin,
             account_sid="",
             auth_token="",
             printer_name="",
-            #upload_provider="cloudinary",
-            upload_provider="aws_s3",
+            upload_provider="cloudinary",
             s3_bucket="",
             s3_url="",
             s3_key_prefix="",
