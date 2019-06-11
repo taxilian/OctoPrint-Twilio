@@ -3,7 +3,7 @@ from __future__ import absolute_import
 import os
 import octoprint.plugin
 import phonenumbers
-from sarge import (shell_quote, run)
+import sarge
 from twilio.rest import Client as TwilioRestClient
 
 
