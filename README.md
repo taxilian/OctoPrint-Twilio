@@ -1,6 +1,6 @@
 # OctoPrint-Twilio
 
-Recieve SMS notifications when OctoPrint jobs are complete.
+Receive SMS notifications when OctoPrint jobs are complete.
 
 ![Settings tab and email screenshot](extras/smsnotifier.png)
 

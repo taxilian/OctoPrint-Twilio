@@ -3,7 +3,7 @@ layout: plugin
 
 id: smsnotifier
 title: SMS Notifier (with Twilio)
-description: Recieve SMS notifications when OctoPrint jobs are complete.
+description: Receive SMS notifications when OctoPrint jobs are complete.
 author: Richard Bteman
 license: AGPLv3
 
@@ -35,4 +35,4 @@ compatibility:
 
 ---
 
-Recieve email notifications when OctoPrint jobs are complete.
+Receive email notifications when OctoPrint jobs are complete.
