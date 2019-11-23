@@ -4,7 +4,7 @@ layout: plugin
 id: smsnotifier
 title: SMS Notifier (with Twilio)
 description: Receive SMS notifications when OctoPrint jobs are complete.
-author: Richard Bteman
+author: Richard Bateman
 license: AGPLv3
 
 # today's date in format YYYY-MM-DD, e.g.
