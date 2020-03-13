@@ -91,7 +91,7 @@ class SMSNotifierPlugin(octoprint.plugin.EventHandlerPlugin,
 
     def _send_txt(self, payload, snapshot=False):
 
-        filename = os.path.basename(payload["file"])
+        filename = payload["name"]
 
         import datetime
         import octoprint.util
