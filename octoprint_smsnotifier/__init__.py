@@ -99,21 +99,23 @@ class SMSNotifierPlugin(octoprint.plugin.EventHandlerPlugin,
 
         fromnumber = phonenumbers.format_number(phonenumbers.parse(self._settings.get(['from_number']), 'US'), phonenumbers.PhoneNumberFormat.E164)
 
+        tags = {
+            'filename': filename,
+            'elapsed_time': elapsed_time,
+            'printer_name': self._settings.get(["printer_name"])
+        }
+        message = self._settings.get(["message_format", "body"]).format(**tags)
+
+        client = TwilioRestClient(self._settings.get(['account_sid']), self._settings.get(['auth_token']))
+
         for number in self._settings.get(['recipient_number']).split(','):
             tonumber = phonenumbers.format_number(phonenumbers.parse(number, 'US'), phonenumbers.PhoneNumberFormat.E164)
-            tags = {
-                'filename': filename,
-                'elapsed_time': elapsed_time,
-                'printer_name': self._settings.get(["printer_name"])
-            }
-            message = self._settings.get(["message_format", "body"]).format(**tags)
-
-            client = TwilioRestClient(self._settings.get(['account_sid']), self._settings.get(['auth_token']))
+            
             if snapshot:
                 try:
                     client.messages.create(to=tonumber, from_=fromnumber, body=message, media_url=snapshot)
                 except Exception as e:
-                    # report problem sending sms
+                    # report problem sending sms and stop
                     self._logger.exception("SMS notification error: %s" % (str(e)))
                     return False
                 else:
@@ -123,12 +125,15 @@ class SMSNotifierPlugin(octoprint.plugin.EventHandlerPlugin,
                 try:
                     client.messages.create(to=tonumber, from_=fromnumber, body=message)
                 except Exception as e:
-                    # report problem sending sms
+                    # report problem sending sms and stop
                     self._logger.exception("SMS notification error: %s" % (str(e)))
                     return False
                 else:
                     # report notification was sent
                     self._logger.info("Print notification sent to %s" % (self._settings.get(['recipient_number'])))
+
+        # all messages were sent successfully
+        return True 
 
     def _process_snapshot(self, snapshot_path, pixfmt="yuv420p"):
         hflip = self._settings.global_get_boolean(["webcam", "flipH"])
