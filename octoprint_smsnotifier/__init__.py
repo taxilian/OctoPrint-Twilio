@@ -1,10 +1,13 @@
 # coding=utf-8
-from __future__ import absolute_import
+from __future__ import absolute_import, division, print_function, unicode_literals
 import os
 import octoprint.plugin
 import phonenumbers
 from sarge import (shell_quote, run)
 from twilio.rest import Client as TwilioRestClient
+
+
+__plugin_pythoncompat__ = ">=2.7,<4"
 
 
 class SMSNotifierPlugin(octoprint.plugin.EventHandlerPlugin,
