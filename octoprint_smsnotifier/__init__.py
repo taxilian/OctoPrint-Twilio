@@ -5,6 +5,7 @@ import octoprint.plugin
 import phonenumbers
 from sarge import (shell_quote, run)
 from twilio.rest import Client as TwilioRestClient
+from twilio.base import values
 
 
 __plugin_pythoncompat__ = ">=2.7,<4"
@@ -92,7 +93,7 @@ class SMSNotifierPlugin(octoprint.plugin.EventHandlerPlugin,
         else:
             return self._send_txt(payload)
 
-    def _send_txt(self, payload, snapshot=False):
+    def _send_txt(self, payload, media_url=values.unset):
 
         filename = payload["name"]
 
@@ -113,29 +114,18 @@ class SMSNotifierPlugin(octoprint.plugin.EventHandlerPlugin,
 
         for number in self._settings.get(['recipient_number']).split(','):
             tonumber = phonenumbers.format_number(phonenumbers.parse(number, 'US'), phonenumbers.PhoneNumberFormat.E164)
-            
-            if snapshot:
-                try:
-                    client.messages.create(to=tonumber, from_=fromnumber, body=message, media_url=snapshot)
-                except Exception as e:
-                    # report problem sending sms and stop
-                    self._logger.exception("SMS notification error: %s" % (str(e)))
-                    return False
-                else:
-                    # report notification was sent
-                    self._logger.info("Print notification sent to %s" % (self._settings.get(['recipient_number'])))
-            else:
-                try:
-                    client.messages.create(to=tonumber, from_=fromnumber, body=message)
-                except Exception as e:
-                    # report problem sending sms and stop
-                    self._logger.exception("SMS notification error: %s" % (str(e)))
-                    return False
-                else:
-                    # report notification was sent
-                    self._logger.info("Print notification sent to %s" % (self._settings.get(['recipient_number'])))
 
-        # all messages were sent successfully
+            try:
+                client.messages.create(to=tonumber, from_=fromnumber, body=message, media_url=media_url)
+            except Exception as e:
+                # report problem sending sms
+                self._logger.error("SMS notification error: %s" % (str(e)))
+                continue
+            else:
+                # report notification was sent
+                self._logger.info("Print notification sent to %s" % (self._settings.get(['recipient_number'])))
+
+        # all messages were attempted to be sent
         return True 
 
     def _process_snapshot(self, snapshot_path, pixfmt="yuv420p"):
