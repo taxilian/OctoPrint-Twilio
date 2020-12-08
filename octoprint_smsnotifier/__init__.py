@@ -11,7 +11,7 @@ else:
 import os
 import octoprint.plugin
 import phonenumbers
-from sarge import (shell_quote, run)
+import sarge
 from twilio.rest import Client as TwilioRestClient
 from twilio.base import values
 
