@@ -1,5 +1,13 @@
 # coding=utf-8
 from __future__ import absolute_import, division, print_function, unicode_literals
+
+import sys
+
+if sys.version_info[0] >= 3:
+    from urllib.request import urlretrieve
+else:
+    from urllib import urlretrieve
+
 import os
 import octoprint.plugin
 import phonenumbers
@@ -56,8 +64,7 @@ class SMSNotifierPlugin(octoprint.plugin.EventHandlerPlugin,
             if snapshot_url:
                 self._logger.info("Taking Snapshot.... Say Cheese!")
                 try:
-                    import urllib
-                    snapshot_path, headers = urllib.urlretrieve(snapshot_url)
+                    snapshot_path, headers = urlretrieve(snapshot_url)
                 except Exception as e:
                     self._logger.exception("Exception while fetching snapshot from webcam, sending only a note: {message}".format(
                         message=str(e)))
