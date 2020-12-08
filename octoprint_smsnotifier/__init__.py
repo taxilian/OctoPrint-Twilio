@@ -130,7 +130,7 @@ class SMSNotifierPlugin(octoprint.plugin.EventHandlerPlugin,
                 continue
             else:
                 # report notification was sent
-                self._logger.info("Print notification sent to %s" % (self._settings.get(['recipient_number'])))
+                self._logger.info("Print notification sent to %s" % (tonumber))
 
         # all messages were attempted to be sent
         return True 
