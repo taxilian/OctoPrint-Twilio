@@ -13,6 +13,7 @@ import octoprint.plugin
 import phonenumbers
 from sarge import (shell_quote, run)
 from twilio.rest import Client as TwilioRestClient
+from twilio.base import values
 
 
 __plugin_pythoncompat__ = ">=2.7,<4"
@@ -99,7 +100,7 @@ class SMSNotifierPlugin(octoprint.plugin.EventHandlerPlugin,
         else:
             return self._send_txt(payload)
 
-    def _send_txt(self, payload, snapshot=False):
+    def _send_txt(self, payload, media_url=values.unset):
 
         filename = payload["name"]
 
@@ -109,8 +110,6 @@ class SMSNotifierPlugin(octoprint.plugin.EventHandlerPlugin,
 
         fromnumber = phonenumbers.format_number(phonenumbers.parse(self._settings.get(['from_number']), 'US'), phonenumbers.PhoneNumberFormat.E164)
 
-        for number in self._settings.get(['recipient_number']).split(','):
-            tonumber = phonenumbers.format_number(phonenumbers.parse(number, 'US'), phonenumbers.PhoneNumberFormat.E164)
         tags = {
             'filename': filename,
             'elapsed_time': elapsed_time,
@@ -119,29 +118,22 @@ class SMSNotifierPlugin(octoprint.plugin.EventHandlerPlugin,
         message = self._settings.get(["message_format", "body"]).format(**tags)
 
         client = TwilioRestClient(self._settings.get(['account_sid']), self._settings.get(['auth_token']))
-        if snapshot:
+
+        for number in self._settings.get(['recipient_number']).split(','):
+            tonumber = phonenumbers.format_number(phonenumbers.parse(number, 'US'), phonenumbers.PhoneNumberFormat.E164)
+
             try:
-                client.messages.create(to=tonumber, from_=fromnumber, body=message, media_url=snapshot)
+                client.messages.create(to=tonumber, from_=fromnumber, body=message, media_url=media_url)
             except Exception as e:
                 # report problem sending sms
-                self._logger.exception("SMS notification error: %s" % (str(e)))
-                return False
+                self._logger.error("SMS notification error: %s" % (str(e)))
+                continue
             else:
                 # report notification was sent
-                self._logger.info("Print notification sent to %s" % (self._settings.get(['recipient_number'])))
-                return True
+                self._logger.info("Print notification sent to %s" % (tonumber))
 
-        try:
-            client.messages.create(to=tonumber, from_=fromnumber, body=message)
-        except Exception as e:
-            # report problem sending sms
-            self._logger.exception("SMS notification error: %s" % (str(e)))
-        else:
-            # report notification was sent
-            self._logger.info("Print notification sent to %s" % (self._settings.get(['recipient_number'])))
-            return True
-
-        return False
+        # all messages were attempted to be sent
+        return True 
 
     def _process_snapshot(self, snapshot_path, pixfmt="yuv420p"):
         hflip = self._settings.global_get_boolean(["webcam", "flipH"])
