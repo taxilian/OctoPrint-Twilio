@@ -1,26 +1,19 @@
-<h3>{{ _('SMS Notifier Configuration') }}</h3>
+<h3>{{ plugin_smsnotifier_name }} - {{ plugin_smsnotifier_version }}</h3>
 
-<form class="form-horizontal">
+<h4>{{ _('Plugin Configuration') }}</h4>
 
-	<div class="control-group">
-		<div class="controls" title="{{ _('You can toggle whether SMS notifications are enabled while a print is in progress.') }}">
-			<label class="checkbox">
-				<input type="checkbox" data-bind="checked: settings.plugins.smsnotifier.enabled" /> {{ _('Enabled') }}
-			</label>
+<form id="smsnotifierViewModel" class="form-horizontal">
+	<div class="control-group" title="{{ _('You can toggle whether SMS notifications are enabled while a print is in progress.') }}">
+		<label class="control-label">{{ _('Enabled') }}</label>
+		<div class="controls">
+			<input type="checkbox" data-bind='checked: enabled, uniqueName: true' />
 		</div>
 	</div>
 
-	<div class="control-group" title="{{ _('Printer name so you can tell which printer finished.') }}">
-		<label class="control-label">{{ _('Unique (to you) Printer name') }}</label>
+	<div class="control-group" title="{{ _('Notifications will be sent as SMS to this/these phone numbers.') }}">
+		<label class="control-label">{{ _('Recipient Phone # (comma separated)') }}</label>
 		<div class="controls">
-			<input type="text" class="input-block-level" data-bind="value: settings.plugins.smsnotifier.printer_name">
-		</div>
-	</div>
-
-	<div class="control-group" title="{{ _('Print complete notifications will be sent as SMS to this/these phone numbers.') }}">
-		<label class="control-label">{{ _('Recipient Phone number (comma separated)') }}</label>
-		<div class="controls">
-			<input type="text" class="input-block-level" data-bind="value: settings.plugins.smsnotifier.recipient_number">
+			<input type="text" class="input-block-level" data-bind='value: recipient_number, uniqueName: true'>
 		</div>
 	</div>
 
@@ -31,43 +24,58 @@
 	<div class="control-group" title="{{ _('Account SID.') }}">
 		<label class="control-label">{{ _('Account SID') }}</label>
 		<div class="controls">
-			<input type="text" class="input-block-level" data-bind="value: settings.plugins.smsnotifier.account_sid">
+			<input type="text" class="input-block-level" data-bind='value: account_sid, uniqueName: true'>
 		</div>
 	</div>
 
 	<div class="control-group" title="{{ _('Auth Token.') }}">
 		<label class="control-label">{{ _('Auth Token') }}</label>
 		<div class="controls">
-			<input type="text" class="input-block-level" data-bind="value: settings.plugins.smsnotifier.auth_token">
+			<input type="text" class="input-block-level" data-bind='value: auth_token, uniqueName: true'>
 		</div>
 	</div>
 
 	<div class="control-group" title="{{ _('Twilio Number.') }}">
 		<label class="control-label">{{ _('Twilio Number') }}</label>
 		<div class="controls">
-			<input type="text" class="input-block-level" data-bind="value: settings.plugins.smsnotifier.from_number">
+			<input type="text" class="input-block-level" data-bind='value: from_number, uniqueName: true'>
 		</div>
 	</div>
 
-	<h4>{{ _('Message Content') }}</h4>
+	<h4>Event Configuration</h4>
 
-	<p>{{ _('The SMS template may contain the tags <code>{filename}</code>, <code>{elapsed_time}</code>, and <code>{printer_name}</code>.') }}</p>
-
-	<div class="control-group" title="{{ _('Content of notification message') }}">
-		<label class="control-label">{{ _('Message') }}</label>
-		<div class="controls">
-			<input type="text" class="input-block-level" data-bind="value: settings.plugins.smsnotifier.message_format.body">
-		</div>
-	</div>
+	<p>
+		You can send a text message and optional picture for any OctoPrint <a href='https://docs.octoprint.org/en/master/events/index.html#available-events' target="_blank">event</a>.
+		You can use any variables from the events Payload in your message, for example, the <code>PrintDone</code> event can use the following variables
+		<code>{name}</code>, <code>{path}</code>, <code>{origin}</code>,<code>{size}</code>, <code>{owner}</code> and <code>{time}</code>.
+	</p>
 
 	<div class="control-group">
-      <div class="controls">
-          <label class="checkbox">
-              <input type="checkbox" data-bind="checked: settings.plugins.smsnotifier.send_image">{{ _('Send picture (camera required)') }}
-          </label>
-          <span class="help-block"><span class="label label-warning">{{ _('Warning') }}</span>{% trans %}
-              Due to the way Twilio implements <a href="https://www.twilio.com/docs/quickstart/python/sms/sending-via-rest#send-sms-via-api" target="_blank">sending of picture messages</a>. The snapshot from your camera will be hosted <b>publicly</b> at <a href="https://cloudinary.com/" target="_blank">uploads.im</a>.
-          {% endtrans %}</span>
-      </div>
-  </div>
+		<table id="eventsTable" data-bind='visible: events().length > 0'>
+				<thead>
+						<tr>
+								<th class='columnName'>Event Name</th>
+								<th class='columnMsg'>Message</th>
+								<th class='columnPic'>Pic</th>
+								<th class='columnDelete'></th>
+						</tr>
+				</thead>
+				<tbody data-bind='foreach: events'>
+						<tr>
+								<td class='columnName'><input type='text' data-bind='value: name, uniqueName: true' /></td>
+								<td class='columnMsg'><textarea rows="1" data-bind='value: message, uniqueName: true'></textarea></td>
+								<td class='columnPic'><input type='checkbox' data-bind='checked: take_pic, uniqueName: true' /></td>
+								<td class='columnDelete'><button data-bind='click: $root.removeEvent'>Delete</button></td>
+						</tr>
+				</tbody>
+		</table>
+		<button id='addEvent' data-bind='click: addEvent'>Add Event</button>
+
+		<p id='currentEvents'>You are sending messages for <span data-bind='text: events().length'>&nbsp;</span> event(s)</p>
+		<span class="help-block"><span class="label label-warning">{{ _('Warning') }}</span>
+			{% trans %}
+				Due to the way Twilio implements <a href="https://www.twilio.com/docs/quickstart/python/sms/sending-via-rest#send-sms-via-api" target="_blank">sending of picture messages</a>. The snapshot from your camera will be hosted <b>publicly</b> at <a href="https://cloudinary.com/" target="_blank">Cloudinary</a>.
+			{% endtrans %}
+		</span>
+	</div>
 </form>
