@@ -1,0 +1,47 @@
+#eventsTable {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse:separate; 
+  border-spacing: 5px;
+  margin-bottom: 1em;
+}
+
+.columnName {
+  width: 144px;
+}
+
+.columnName input {
+  width: 130px;
+}
+
+.columnMsg {
+  width: 60%;
+}
+
+.columnPic {
+  width: 5%;
+}
+
+.columnPic input {
+  display: block;
+  margin: auto;
+}
+
+.columnDelete {
+  width: 10%;
+}
+
+.columnMsg textarea {
+  resize: vertical;
+  width: 95%;
+  min-height: 20px;
+  max-height: 100px;
+  margin: 0 5px;
+}
+
+#currentEvents {
+  margin-top: 1em;
+}
+
+
+
