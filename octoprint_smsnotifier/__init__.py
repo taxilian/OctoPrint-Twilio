@@ -76,7 +76,7 @@ class SMSNotifierPlugin(
             default_event = dict(
                 name='PrintDone',
                 message=new_body,
-                take_pic=self._settings.get(['send_image'])    
+                take_pic=self._settings.get(['send_image'])
             )
 
             self._settings.set(['events'], [default_event])
@@ -163,13 +163,14 @@ class SMSNotifierPlugin(
         if "url" not in response:
             self._logger.error("Cloud returned {}".format(response["error"]["message"]))
             return self.NO_SNAPSHOT
-        
+
         self._logger.info("Snapshot uploaded to {}".format(response["url"]))
         return response["url"]
 
     def _send_txt(self, event_config, payload, media_url=values.unset):
 
-        payload['time'] = octoprint.util.get_formatted_timedelta(datetime.timedelta(seconds=payload["time"]))
+        if 'time' in payload:
+            payload['time'] = octoprint.util.get_formatted_timedelta(datetime.timedelta(seconds=payload["time"]))
 
         fromnumber = phonenumbers.format_number(phonenumbers.parse(self._settings.get(['from_number']), 'US'), phonenumbers.PhoneNumberFormat.E164)
 
@@ -191,7 +192,7 @@ class SMSNotifierPlugin(
                 self._logger.info("Print notification sent to %s" % (tonumber))
 
         # all messages were attempted to be sent
-        return True 
+        return True
 
     def _process_snapshot(self, snapshot_path, pixfmt="yuv420p"):
         hflip = self._settings.global_get_boolean(["webcam", "flipH"])
