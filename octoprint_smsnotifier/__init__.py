@@ -8,6 +8,7 @@ if sys.version_info[0] >= 3:
 else:
     from urllib import urlretrieve
 
+from string import Formatter
 import os
 import datetime
 import octoprint.plugin
@@ -120,7 +121,6 @@ class SMSNotifierPlugin(
                 break
 
         if not event_config:
-            self._logger.warning('No events configured for {}'.format(event))
             return
 
         snapshot = self.NO_SNAPSHOT
@@ -174,7 +174,9 @@ class SMSNotifierPlugin(
 
         fromnumber = phonenumbers.format_number(phonenumbers.parse(self._settings.get(['from_number']), 'US'), phonenumbers.PhoneNumberFormat.E164)
 
-        message = event_config['message'].format(**payload)
+        msg_template = self._reformat_vars(event_config['message'])
+
+        message = msg_template.format(**payload)
 
         client = TwilioRestClient(self._settings.get(['account_sid']), self._settings.get(['auth_token']))
 
@@ -193,6 +195,35 @@ class SMSNotifierPlugin(
 
         # all messages were attempted to be sent
         return True
+
+    def _reformat_vars(self, msg):
+
+        # This gets the variables from the users msg template that
+        # are in dot notation form
+        vars = [fn for _, fn, _, _ in Formatter().parse(msg) if fn is not None and '.' in fn]
+
+        if not vars:
+            return msg
+
+        tmpl = "{{{0}}}"
+
+        # For each variable replace it in the msg template
+        # with the traditional dictionary style [var]
+        for var in vars:
+            old_var = tmpl.format(var)
+            new_var = self._convert_dot_notation(var)
+            msg = msg.replace(old_var, tmpl.format(new_var))
+
+        return msg
+
+    def _convert_dot_notation(self, var_name):
+        parts = var_name.split('.')
+        result = parts[0]
+
+        for part in parts[-1]:
+            result += "[{}]".format(part)
+
+        return result
 
     def _process_snapshot(self, snapshot_path, pixfmt="yuv420p"):
         hflip = self._settings.global_get_boolean(["webcam", "flipH"])
