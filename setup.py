@@ -33,7 +33,7 @@ plugin_url = "https://github.com/taxilian/OctoPrint-Twilio"
 plugin_license = "AGPLv3"
 
 # Any additional requirements besides OctoPrint should be listed here
-plugin_requires = ['twilio>=6','phonenumbers','cloudinary','six>=1.9.0','sarge']
+plugin_requires = ['twilio>=6','phonenumbers','cloudinary','sarge']
 
 # Additional package data to install for this plugin. The subfolders "templates", "static" and "translations" will
 # already be installed automatically if they exist.

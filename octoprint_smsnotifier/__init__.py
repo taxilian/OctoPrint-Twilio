@@ -1,22 +1,14 @@
-# coding=utf-8
-from __future__ import absolute_import, division, print_function, unicode_literals
-
-import sys
-
-if sys.version_info[0] >= 3:
-    from urllib.request import urlretrieve
-else:
-    from urllib import urlretrieve
-
+import datetime
 import os
+from urllib.request import urlretrieve
+
 import octoprint.plugin
+import octoprint.util
 import phonenumbers
 import sarge
-from twilio.rest import Client as TwilioRestClient
+from cloudinary import uploader
 from twilio.base import values
-
-
-__plugin_pythoncompat__ = ">=2.7,<4"
+from twilio.rest import Client as TwilioRestClient
 
 
 class SMSNotifierPlugin(octoprint.plugin.EventHandlerPlugin,
@@ -78,7 +70,6 @@ class SMSNotifierPlugin(octoprint.plugin.EventHandlerPlugin,
                     self._process_snapshot(snapshot_path)
 
                     try:
-                        from cloudinary import uploader
                         response = uploader.unsigned_upload(snapshot_path, "snapshot", cloud_name="octoprint-twilio")
                     except Exception as e:
                         self._logger.exception("Error Uploading image to the cloud: {message}".format(message=str(e)))
@@ -101,11 +92,8 @@ class SMSNotifierPlugin(octoprint.plugin.EventHandlerPlugin,
             return self._send_txt(payload)
 
     def _send_txt(self, payload, media_url=values.unset):
-
         filename = payload["name"]
 
-        import datetime
-        import octoprint.util
         elapsed_time = octoprint.util.get_formatted_timedelta(datetime.timedelta(seconds=payload["time"]))
 
         fromnumber = phonenumbers.format_number(phonenumbers.parse(self._settings.get(['from_number']), 'US'), phonenumbers.PhoneNumberFormat.E164)
@@ -186,7 +174,7 @@ class SMSNotifierPlugin(octoprint.plugin.EventHandlerPlugin,
 
 
 __plugin_name__ = "SMS Notifier (with Twilio)"
-
+__plugin_pythoncompat__ = ">=3,<4"
 
 def __plugin_load__():
     global __plugin_implementation__
