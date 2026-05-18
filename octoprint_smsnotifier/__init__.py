@@ -38,6 +38,9 @@ class SMSNotifierPlugin(
         return 1
 
     # TemplatePlugin
+    
+    def is_template_autoescaped(self):
+        True
 
     def get_template_configs(self):
         return [dict(type="settings", name="SMS Notifier", custom_bindings=False)]
