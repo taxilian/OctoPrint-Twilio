@@ -1,0 +1,4 @@
+include README.md
+recursive-include octoprint_smsnotifier/templates *
+recursive-include octoprint_smsnotifier/translations *
+recursive-include octoprint_smsnotifier/static *
